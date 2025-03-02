@@ -45,10 +45,8 @@ def fit_NeuralNetwork(X_train, y_train, alpha, hidden_layer_sizes, epochs):
             index = choiceArray[n]
             x = np.transpose(X_train[index])
 
-            # print(weights[0])
             recordX, recordS = forwardPropagation(x, weights)
             gradients = backPropagation(recordX, y_train[index], recordS, weights)
-            # print("after backprop: ", gradients[0])
             # print("before: ", weights[2])
             # print(gradients[2])
             weights = updateWeights(weights, gradients, alpha)
@@ -91,8 +89,6 @@ def forwardPropagation(x, weights):
             currX = np.hstack((1,currX))
         else:
             currX = outputf(currS)
-            # if (currX == 1):
-            #     print("HERE: ", currX, currS, x, retX[-1], weights[-1])
         retX.append(currX)
 
     return retX, retS
@@ -121,9 +117,7 @@ def backPropagation(X,y_n,s,weights):
     # By chain rule, dL/dS[l-2] = dL/dy * dy/dS[l-2] . Now dL/dy is the derivative Error and 
     # dy/dS[l-2]  is the derivative output.
 
-    # print(X[l-1], y_n, s[l-2])
     delL.insert(0, derivativeError(X[l-1], y_n) * derivativeOutput(s[l-2]))
-    # print(delL)
     curr = 0
     
     # Now, let's calculate dL/dS[l-2], dL/dS[l-3],...
@@ -190,7 +184,7 @@ def outputf(s):
     return 1.0 / (1 + np.exp(-s))
 
 def derivativeOutput(s):
-    return np.exp(-s) / ( (1 + np.exp(-2)) ** 2 )
+    return np.exp(-s) / ( (1 + np.exp(-s)) ** 2 )
 
 def errorf(x_L,y):
     if y == 1:
