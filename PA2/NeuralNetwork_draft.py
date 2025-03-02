@@ -6,6 +6,7 @@ from sklearn.datasets import load_iris
 from sklearn.model_selection import train_test_split
 from sklearn.neural_network import MLPClassifier
 from sklearn.metrics import confusion_matrix 
+import copy
 
 
 def fit_NeuralNetwork(X_train, y_train, alpha, hidden_layer_sizes, epochs):
@@ -18,7 +19,6 @@ def fit_NeuralNetwork(X_train, y_train, alpha, hidden_layer_sizes, epochs):
     X_train = np.hstack((X0, X_train))
     d = d + 1                       # now update d to account for the dummy column
     L = len(hidden_layer_sizes) + 2 # number of layers (including input & output)
-    
     # Initializing the weights 
     # for weight matrix from layer l going to l+1, row k will be the weights from node k in layer l to all nodes in layer l+1
     weights = [] # list where each element is a weight matrix
@@ -35,18 +35,26 @@ def fit_NeuralNetwork(X_train, y_train, alpha, hidden_layer_sizes, epochs):
     # initializing the weights for output layer
     weight_layer = np.random.normal(0, 0.1, (hidden_layer_sizes[l+1] + 1, 1)) 
     weights.append(weight_layer) 
-    
+
     for e in range(epochs):
         choiceArray = np.arange(0, N)
         np.random.shuffle(choiceArray)
+
         errN = 0
         for n in range(N):
             index = choiceArray[n]
             x = np.transpose(X_train[index])
 
+            # print(weights[0])
             recordX, recordS = forwardPropagation(x, weights)
             gradients = backPropagation(recordX, y_train[index], recordS, weights)
+            # print("after backprop: ", gradients[0])
+            # print("before: ", weights[2])
+            # print(gradients[2])
             weights = updateWeights(weights, gradients, alpha)
+            # print(weights[2])
+            if (np.isnan(weights[2][0][0])):
+                exit(1)
             errN += errorPerSample(recordX, y_train[index])
 
         err[e] = errN/N 
@@ -56,6 +64,8 @@ def forwardPropagation(x, weights):
     # first element of x is 1, x has d+1 elements
     # weights is a list of length L-1, where each element is a 2D weight matrix
     # L is the number of layers including the initial input layer
+    # for a weight matrix, rows = number of previous layer outputs + 1 (for bias)
+    # cols = number of this layer's outputs
 
     # retS is list of L-1 elements, each element is a vector storing the inputs to the next layer
     # e.g., vector at index 0 stores inputs to layer 1 (first hidden layer)
@@ -81,10 +91,10 @@ def forwardPropagation(x, weights):
             currX = np.hstack((1,currX))
         else:
             currX = outputf(currS)
-            if (currX == 1):
-                print("HERE: ", currX, currS, x, retX[-1], weights[-1])
-                print("actual s: ", np.dot(retX[-1], weights[-1]))
+            # if (currX == 1):
+            #     print("HERE: ", currX, currS, x, retX[-1], weights[-1])
         retX.append(currX)
+
     return retX, retS
 
 def errorPerSample(X,y_n):
@@ -111,8 +121,9 @@ def backPropagation(X,y_n,s,weights):
     # By chain rule, dL/dS[l-2] = dL/dy * dy/dS[l-2] . Now dL/dy is the derivative Error and 
     # dy/dS[l-2]  is the derivative output.
 
-    # print(X[l-1], y_n)
+    # print(X[l-1], y_n, s[l-2])
     delL.insert(0, derivativeError(X[l-1], y_n) * derivativeOutput(s[l-2]))
+    # print(delL)
     curr = 0
     
     # Now, let's calculate dL/dS[l-2], dL/dS[l-3],...
@@ -126,9 +137,9 @@ def backPropagation(X,y_n,s,weights):
 
         #Now we calculate the gradient backward
         #Remember: dL/dS[i] = dL/dS[i+1] * W(which W???) * activation
-        for j in range(len(s[i-1])): # number of nodes in layer i - 1
-            for k in range(len(s[i])): # number of nodes in layer i
-                delN[j] = delN[j] + derivativeActivation(sCurrLayer[j]) * WeightsNextLayer[j][k] * delNextLayer[k]
+        for j in range(len(s[i-1])): # number of nodes in layer i - 1 (not including bias node)
+            for k in range(len(s[i])): # number of nodes in layer i (not including bias node)
+                delN[j] = delN[j] + derivativeActivation(sCurrLayer[j]) * WeightsNextLayer[j+1][k] * delNextLayer[k]
         
         delL.insert(0, delN)
     
@@ -152,6 +163,7 @@ def backPropagation(X,y_n,s,weights):
 
 def updateWeights(weights, g, alpha):
     nW = []
+
     for i in range(len(weights)):
         rows, cols = weights[i].shape
         currWeight = weights[i]
